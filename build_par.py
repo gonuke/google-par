@@ -12,6 +12,10 @@ client = gspread.authorize(creds)
 # Make sure you use the right name here.
 book = client.open("PAR Data")
 
+timeunit = [("WEEK", "wk"),
+            ("MONTH", "month"),
+            ("SEMESTER", "sem"),
+            ("YEAR", "yr")]
 
 def get_course_list(book,year):
 
@@ -126,59 +130,79 @@ def get_advising_info(book,year):
 
     advising_str = "\section{Advising Responsibilities}\n\n"
 
-    advising_str += get_student_advising_info(book,year) + "\n\n"
+    advising_str += get_student_advising_info(book,year) + "\\\\ \n"
 
     advising_str += get_org_advising_info(book,year)
     
     return advising_str
 
-def get_ep_service(book,year):
+def expand_table(table,cat_table,join_key):
 
-    ep_service_str = "\subsection{To Engineering Physics Department}\n\n"
+    catalog = {e[join_key] : e for e in cat_table}
+    
+    for e in table:
+        for (k,v) in catalog[e[join_key]].items():
+            e[k] = v
 
-    return ep_service_str
+    return table
 
-def get_coe_service(book,year):
+def commit_list(services):
 
-    coe_service_str = "\subsection{To College of Engineering}\n\n"
+    commit_str = ""
+    # list in order of weekly, monthly, semesterly, annually
+    for time_key, time_str in timeunit:
+        for svc in [s for s in services if s['COMMITMENTUNIT'] == time_key]:
+            commit_str += svc['NAME'] + " (" + str(svc['COMMITMENTQUANTITY']) + " hrs/" + \
+                          time_str + ")\\\\\n"
 
-    return coe_service_str
+    return commit_str
 
-def get_uw_service(book,year):
+def soc_svc(services,society):
 
-    uw_service_str = "\subsection{To University of Wisconsin and State of Wisconsin}\n\n"
+    name = [svc['NAME'] for svc in services if svc['SERVICECODE'] == society]
+    
+    cat_svc_str = "\subsubsection{" + name[0] + "}\n\n"
 
-    return uw_service_str
+    cat_svc_str += commit_list([s for s in services if s['SOCIETY'] == society])
 
-def get_nat_service(book,year):
+    return cat_svc_str
 
-    nat_service_str = "\subsection{To National Groups and Other Universities}\n\n"
+def get_service_cat(services,cat,cat_str):
 
-    return nat_service_str
+    cat_svc = [s for s in services if s['CATEGORY'] == cat]
+    
+    cat_svc_str = "\subsection{To " + cat_str + "}\n\n"
 
-def get_prof_service(book,year):
-
-    prof_service_str = "\subsection{To Professional Societies}\n\n"
-
-    return prof_service_str
-
-def get_review_service(book,year):
-
-    review_service_str = "\subsection{To Technical Journals and Conferences}\n\n"
-
-    return review_service_str
+    if (len(cat_svc) < 1):
+        cat_svc_str += "\emph{none} \\\\ \n"
+    else:
+        if (cat != "SOCIETY"):
+            cat_svc_str += commit_list(cat_svc)
+        else:
+            for soc in {s['SOCIETY'] for s in cat_svc if s['SOCIETY'] != ""}:
+                cat_svc_str += soc_svc(cat_svc,soc)
+            
+    return cat_svc_str + "\n\n"
 
 def get_service(book,year):
 
+    current_services = [s for s in book.worksheet('Service').get_all_records() if is_current(s,year) ]
+    service_catalog = book.worksheet('ServiceList').get_all_records()
+
+    current_services = expand_table(current_services, service_catalog, "SERVICECODE")
+    current_services.extend([s for s in service_catalog if (s['CATEGORY'] == 'SOCIETY' and s['SOCIETY'] == "")])
+    
     service_str = "\section{Service}\n\n"
 
-    service_str += get_ep_service(book,year)
-    service_str += get_coe_service(book,year)
-    service_str += get_uw_service(book,year)
-    service_str += get_nat_service(book,year)
-    service_str += get_prof_service(book,year)
-    service_str += get_review_service(book,year)
+    service_cat_list = [("EP", "the Engineering Physics Department"),
+                        ("COE", "the College of Engineering"),
+                        ("UW", "the UW Campus and State of Wisconsin"),
+                        ("NATIONAL", "National Groups and Other Universities/Institutions"),
+                        ("SOCIETY", "Professional Societies")]
     
+    for (cat,cat_str) in service_cat_list:
+        service_str += get_service_cat(current_services, cat, cat_str)
+        
     return service_str
 
 section_sep = "\n\n%%\n%% "
@@ -188,7 +212,9 @@ print("""\
 
 \usepackage{ep_par}
 
-\\newcommand{\paryear}{2017}
+\\newcommand{\paryear}{
+""" + str(year) + """\
+}
 \\newcommand{\parperson}{Paul P.\ H.\ Wilson}
 \\begin{document}
 
