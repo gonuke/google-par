@@ -19,11 +19,11 @@ def print_course_list(book,year):
     single_rule = " \\\\ \hline"
     part_rule = " \\\\ \cline{2-4}"
     double_rule = single_rule + "\hline"
-    header = "\section{List of Courses Taught}\n" + \
+    header = "\section{Courses Taught}\n" + \
              "\\begin{centering}\n" + \
              "\\begin{tabular}{|l|l|c|l|}\\hline\n" + \
              "\\textbf{Semester} & \\textbf{Course} & \\textbf{\# of Students} & \\textbf{Role}" + double_rule
-    empty_semester = "\multicolumn{3}{|c|}{\emph{none}} " + double_rule
+    empty_semester = "\multicolumn{3}{c|}{\emph{none}} " + double_rule
     footer = "\\end{tabular}\n \end{centering}"
 
     full_history = book.worksheet('CourseHistory').get_all_records()
@@ -44,7 +44,7 @@ def print_future_courses(book):
 
     all_courses = book.worksheet('CourseInfo').get_all_records()
 
-    header = "\section{List of Courses for Future}\n"
+    header = "\section{Course Interest for Future}\n"
 
     status_list = ['PREP','REPEAT','INTEREST']
     status_strings = {'PREP':'Courses I am prepared to teach',
@@ -56,6 +56,21 @@ def print_future_courses(book):
               ", ".join([c['COURSEID'] for c in all_courses if c['PREPSTATUS'] == status]) + \
               "\\\\")
 
+
+def print_advising_info(book,year):
+
+    all_advising = book.worksheet('AdviseeList').get_all_records()
+
+    header = "\section{Advising Responsibilities}"
+
+    num_ug = len([student for student in all_advising if (student['STARTYEAR']<=year and student['ENDYEAR'] >= year and student['TYPE'] == "U")])
+    num_negrads =  len([student for student in all_advising if (student['STARTYEAR']<=year and student['ENDYEAR'] >= year and student['TYPE'] == "G")])
+
+    print(header)
+    print(str(num_ug) + " undergrads")
+    print(str(num_negrads) + " NEEP grads")
+    
+    
 section_sep = "\n\n%%\n%% "
 
 
@@ -78,6 +93,13 @@ print_course_list(book,2017)
 print(section_sep + "Course Prep")    
 print_future_courses(book)
 
+print(section_sep + "Course Dev")
+print("""\
+\section{Course Development Activities}
+\\todo{Add course development}
+""")
 
+print(section_sep + "Student Advising")
+print_advising_info(book,2017)
 
 print("\end{document}")
