@@ -99,3 +99,16 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# also for LaTeX
+*.aux
+*.pdf
+*.log
+
+# avoid adding the secret file,
+# but not all JSON files
+ep-par-processing.json
+
+# avoid adding the specific LaTeX file we are creating,
+# but not all LaTeX files
+par.tex
