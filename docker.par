@@ -1,0 +1,1 @@
+docker run -v /home/wilsonp/professional/google-par:/par -it gonuke/google-par /bin/bash
