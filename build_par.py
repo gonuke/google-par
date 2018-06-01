@@ -549,7 +549,19 @@ def get_personal_research(book,year):
         pr_str += emph_none
 
     return pr_str
-    
+
+def build_publications():
+
+    pub_str = heading("Publications list","")
+
+    for section in ['books','journalssubmitted','journalsaccepted','journalspublished','conference','reports','invited']:
+        pub_str += "\\nocite{0}{{*}}\n".format(section)
+        pub_str += "\\bibliographystyle{0}{{ep_par.bst}}\n".format(section)
+        pub_str += "\\bibliography{0}{{articles.bib}}\n\n".format(section)
+
+    return pub_str
+
+        
 print("""\
 \documentclass[12pt]{article}
 
@@ -616,7 +628,7 @@ print(section_sep + "Personal Research")
 print(get_personal_research(book,year))
 
 print(section_sep + "Publications")
-print(heading("Publications list","") + todo("Figure out bibTeX here"))
+print(build_publications())
 
 print(section_sep + "Other Activites")
 print(heading("Other Important Activities","Comment on any important acitivities not covered above.") + 
