@@ -515,7 +515,7 @@ def get_staff_list(book,year):
 
 def get_ug_list(book,year):
 
-    ug_positions = {'Undergraduate Hourly'}
+    ug_positions = {'U/G Hourly'}
 
     ug_list = [s for s in filter_for_current(book.worksheet("Staff"),year) if s['TITLE'] in ug_positions]
     
