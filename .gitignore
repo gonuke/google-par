@@ -104,6 +104,9 @@ ENV/
 *.aux
 *.pdf
 *.log
+*.bbl
+*.blg
+
 
 # avoid adding the secret file,
 # but not all JSON files
