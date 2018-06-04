@@ -557,7 +557,7 @@ def build_publications():
     for section in ['books','journalssubmitted','journalsaccepted','journalspublished','conference','reports','invited']:
         pub_str += "\\nocite{0}{{*}}\n".format(section)
         pub_str += "\\bibliographystyle{0}{{ep_par.bst}}\n".format(section)
-        pub_str += "\\bibliography{0}{{articles.bib}}\n\n".format(section)
+        pub_str += "\\bibliography{0}{{{0}.bib}}\n\n".format(section)
 
     return pub_str
 
