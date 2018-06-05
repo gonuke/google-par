@@ -1,6 +1,6 @@
 
 SOURCES=par.tex
-BIB=books.aux journalssubmitted.aux journalsaccepted.aux journalspublished.aux conference.aux invited.aux reports.aux
+BIB=books.bib journalssubmitted.bib journalsaccepted.bib journalspublished.bib conference.bib  reports.bib
 
 TIDY=*.lo[fgt] *.toc *.bbl *.blg *.ist *.glo *.aux *.acn *.out
 
@@ -11,7 +11,7 @@ par.pdf: ${SOURCES} ${BIB}
 	bibtex books.aux
 	bibtex journalssubmitted.aux
 	bibtex journalsaccepted.aux
-	bibtex journalspublishe.aux
+	bibtex journalspublished.aux
 	bibtex conference.aux
 	bibtex invited.aux
 	bibtex reports.aux
