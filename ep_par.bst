@@ -560,10 +560,6 @@ FUNCTION {format.names}
   if$
     { namesleft #0 > }
     { s nameptr "{f.~}{vv~}{ll}{, jj}" format.name$ 't :=
-      t "others" =
-        'skip$
-        { t "u" change.case$ 't := }
-      if$
       nameptr #1 >
     { namesleft #1 >
         { ", " * t * }
