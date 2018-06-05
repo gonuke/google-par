@@ -33,9 +33,9 @@ def heading(section, guidance=""):
     return head_str
 
 # unmissible placeholder to be completed later by author
-def todo(todo_str):
+def todo(todo_name):
 
-    return "\\todo{" + todo_str + "}\n\n"
+    return "\input{" + todo_name + "}\n\n"
 
 # utility function can check whether a record is current, either because
 # YEAR == year, or
@@ -325,11 +325,11 @@ def get_outreach(book,year):
 
 def get_course_dev(book,year):
     
-    return heading("Course Development Activities") + todo("Add course development")
+    return heading("Course Development Activities") + todo("course_dev")
 
 def get_honors(book,year):
 
-    return heading("Honors and Awards received in " + str(year)) + todo("Add honors and awards here")
+    return heading("Honors and Awards received in " + str(year)) + todo("honors_awards")
 
 
 def get_patents(book,year):
@@ -632,11 +632,11 @@ print(build_publications())
 
 print(section_sep + "Other Activites")
 print(heading("Other Important Activities","Comment on any important acitivities not covered above.") + 
-      todo("add any important activities not covered here"))
+      todo("important_activities"))
 
 print(section_sep + "Significant Accomplishments")
 print(heading("Significant Accomplishments",
               "Your own view of your most significant accomplishments during the past year") + 
-      todo("add any significant accomplishments"))
+      todo("accomplishments"))
       
 print("\end{document}")
