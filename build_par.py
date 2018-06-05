@@ -32,11 +32,6 @@ def heading(section, guidance=""):
 
     return head_str
 
-# unmissible placeholder to be completed later by author
-def todo(todo_name):
-
-    return "\input{" + todo_name + "}\n\n"
-
 # utility function can check whether a record is current, either because
 # YEAR == year, or
 # STARTYEAR <= year <= ENDYEAR
