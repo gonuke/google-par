@@ -323,10 +323,6 @@ def get_outreach(book,year):
 
     return heading("Educational Outreach Activities") + newline.join(outreach_strs)
 
-def get_honors(book,year):
-
-    return heading("Honors and Awards received in " + str(year)) + todo("honors_awards")
-
 
 def get_patents(book,year):
 
@@ -590,7 +586,7 @@ print(section_sep + "Educational Outreach Activities")
 print(get_outreach(book,year))
 
 print(section_sep + "Awards/Honors")
-print(get_honors(book,year))
+print(get_narrative(book,year,"HonorsAwards", "Honors and Awards received in " + str(year),""))
 
 print(section_sep + "Patents")
 print(get_patents(book,year))
