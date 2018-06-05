@@ -323,10 +323,6 @@ def get_outreach(book,year):
 
     return heading("Educational Outreach Activities") + newline.join(outreach_strs)
 
-def get_course_dev(book,year):
-    
-    return heading("Course Development Activities") + todo("course_dev")
-
 def get_honors(book,year):
 
     return heading("Honors and Awards received in " + str(year)) + todo("honors_awards")
@@ -534,21 +530,18 @@ def get_ug_list(book,year):
 
     return ug_str
 
-def get_personal_research(book,year):
+def get_narrative(book, year, tab, title, desc):
 
-    pr_list = filter_for_current(book.worksheet("PersonalResearch"),year)
+    item_list = filter_for_current(book.worksheet(tab),year)
 
-    pr_str = heading("Personal Research",
-                     "Brief description of the extent and nature of any personal research " + \
-                     "(defined here as research performed independent of graduate students rather " + \
-                     "than through them) and indicate the project on which this research is done.")
+    item_str = heading(title, desc)
 
-    if len(pr_list) > 0:
-        pr_str += "\\\\ \n\n".join([pr['DESCRIPTION'] for pr in pr_list])
+    if len(item_list) > 0:
+        item_str += " \n\n".join([item['DESCRIPTION'] for item in item_list])
     else:
-        pr_str += emph_none
+        item_str += emph_none
 
-    return pr_str
+    return item_str
 
 def build_publications():
 
@@ -560,6 +553,8 @@ def build_publications():
         pub_str += "\\bibliography{0}{{{0}.bib}}\n\n".format(section)
 
     return pub_str
+
+
 
         
 print("""\
@@ -583,7 +578,7 @@ print(section_sep + "Course Prep")
 print(get_future_courses(book))
 
 print(section_sep + "Course Dev")
-print(get_course_dev(book,year))
+print(get_narrative(book,year,"CourseDevelopment", "Course Development Activities",""))
 
 print(section_sep + "Student Advising")
 print(get_advising_info(book,year))
@@ -625,18 +620,20 @@ print(section_sep + "Undergrads")
 print(get_ug_list(book,year))
 
 print(section_sep + "Personal Research")
-print(get_personal_research(book,year))
+print(get_narrative(book,year,"PersonalResearch", "Personal Research",
+                    "Brief description of the extent and nature of any personal research " + \
+                    "(defined here as research performed independent of graduate students rather " + \
+                    "than through them) and indicate the project on which this research is done."))
 
 print(section_sep + "Publications")
 print(build_publications())
 
 print(section_sep + "Other Activites")
-print(heading("Other Important Activities","Comment on any important acitivities not covered above.") + 
-      todo("important_activities"))
+print(get_narrative(book,year,"ImportantActivities", "Other Important Activities",
+                    "Comment on any important acitivities not covered above."))
 
 print(section_sep + "Significant Accomplishments")
-print(heading("Significant Accomplishments",
-              "Your own view of your most significant accomplishments during the past year") + 
-      todo("accomplishments"))
+print(get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
+                    "Your own view of your most significant accomplishments during the past year"))
       
 print("\end{document}")
