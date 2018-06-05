@@ -1,0 +1,2 @@
+docker run -v /home/wilsonp/professional/google-par:/par -it gonuke/google-par /bin/bash par/build_par.py > par.tex
+
