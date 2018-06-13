@@ -3,28 +3,38 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from datetime import datetime
 
-year = 2017
 
-# use creds to create a client to interact with the Google Drive API
-scope = ['https://spreadsheets.google.com/feeds']
-creds = ServiceAccountCredentials.from_json_keyfile_name('ep-par-processing.json', scope)
-client = gspread.authorize(creds)
+def section_sep(title):
+    """
+    Add a comment that serves as a section separator and a title for human
+    readability of the ultimate TeX file.
+    
+    inputs
+    ------
+    title : (str) title for this section
 
-# Find a workbook by name and open the first sheet
-# Make sure you use the right name here.
-book = client.open("PAR Data")
+    outputs
+    -------
+    section_sep_str : (str) containing the separator comment
+    """
+    
+    return  "\n\n%%\n%% " + title + "\n%% " + "-"*len(title)
 
-newline = "\\\\ \n"
-
-section_sep = "\n\n%%\n%% "
-emph_none = "\emph{none}\n\n"
-
-table_single_rule = " \\\\ \hline"
-table_double_rule = table_single_rule + "\hline"
-table_footer = "\\end{tabular}\n \end{centering}"
-
-# add a section heading with some optional guidance
 def heading(section, guidance=""):
+    """
+    Add a section heading and optionally some additional guidance for 
+    how to interpret the section.
+
+    inputs
+    ------
+    section : (str) the title of the section
+    guidance : (str) guidance to be added in italics after the section heading
+                default : ""
+
+    outputs
+    -------
+    head_str : (str) formatted section heading and guidance
+    """
 
     head_str = "\section{" + section + "}\n\n"
     if len(guidance) > 0:
@@ -32,10 +42,27 @@ def heading(section, guidance=""):
 
     return head_str
 
-# utility function can check whether a record is current, either because
-# YEAR == year, or
-# STARTYEAR <= year <= ENDYEAR
 def is_current(record,year):
+    """
+    Utility function to check whether a record is valid for the current year.
+    Since records contain different information about dates, as appropriate,
+    there are multiple conditions that must be tested.
+
+    a) if a record contains only a YEAR, it's value must match the given `year`
+    b) if a record contains a STARTYEAR (and therefore an ENDYEAR), the given `year`
+       must lie in the interval [STARTYEAR, ENDYEAR]
+    c) if a record contains a STARTDATE (and therefore an ENDDATE), the given `year`
+       must lie in the interval [STARTDATE, ENDDATE]
+    d) if a record contains a DATE, the DATE must be in the given `year`
+
+    inputs
+    ------
+    year : (int) year of interest to be matched
+
+    output
+    ------
+    Boolean per the above conditions
+    """
 
     if 'YEAR' in record.keys():
         return record['YEAR'] == year
@@ -44,7 +71,7 @@ def is_current(record,year):
     elif 'STARTDATE' in record.keys():
         start_date_obj = datetime.strptime(record['STARTDATE'],"%m/%d/%y")
         end_date_obj = datetime.strptime(record['ENDDATE'],"%m/%d/%y")
-        return (start_date_obj.year == year or end_date_obj.year == year)
+        return (start_date_obj.year <= year and end_date_obj.year >= year)
     elif 'DATE' in record.keys():
         date_obj = datetime.strptime(record['DATE'],"%m/%d/%y")
         return date_obj.year == year
@@ -95,7 +122,7 @@ def get_course_list(book,year):
 
     semester_list = ['Spring','Summer','Fall']
 
-    part_rule = " \\\\ \cline{2-4}"
+    part_rule  = " \\\\ \cline{2-4}"
     empty_semester = "\multicolumn{3}{c|}{" + emph_none + "} " + table_double_rule
 
     column_info = [("Semester",0.25,''),
@@ -546,85 +573,113 @@ def build_publications():
     return pub_str
 
 
+def build_par(book,year):
 
-        
-print("""\
+    par_tex = """\
 \documentclass[12pt]{article}
 
 \usepackage{ep_par}
-
-\\newcommand{\paryear}{
-""" + str(year) + """\
-}
+"""
+    
+    par_tex += "\\newcommand{\paryear}{" +  str(year) + "}\n"
+    par_tex += """\
 \\newcommand{\parperson}{Paul P.\ H.\ Wilson}
 \\begin{document}
 
 \partitle
-""")
+"""
+    
+    par_tex += section_sep("Course List")
+    par_tex += get_course_list(book,year) + "\n"
 
-print(section_sep + "Course List")    
-print(get_course_list(book,year))
+    par_tex += section_sep("Course Prep")
+    par_tex += get_future_courses(book) + "\n"
 
-print(section_sep + "Course Prep")    
-print(get_future_courses(book))
+    par_tex += section_sep("Course Dev")
+    par_tex += get_narrative(book,year,"CourseDevelopment", "Course Development Activities","") + "\n"
 
-print(section_sep + "Course Dev")
-print(get_narrative(book,year,"CourseDevelopment", "Course Development Activities",""))
+    par_tex += section_sep("Student Advising")
+    par_tex += get_advising_info(book,year) + "\n"
+    
+    par_tex += section_sep("Service")
+    par_tex += get_service(book,year) + "\n"
+    
+    par_tex += section_sep("Educational Outreach Activities")
+    par_tex += get_outreach(book,year) + "\n"
+    
+    par_tex += section_sep("Awards/Honors")
+    par_tex += get_narrative(book,year,"HonorsAwards", "Honors and Awards received in " + str(year),"") + "\n"
 
-print(section_sep + "Student Advising")
-print(get_advising_info(book,year))
+    par_tex += section_sep("Patents")
+    par_tex += get_patents(book,year) + "\n"
 
-print(section_sep + "Service")
-print(get_service(book,year))
+    par_tex += section_sep("Submitted Proposals")
+    par_tex += get_proposal_submissions(book,year) + "\n"
 
-print(section_sep + "Educational Outreach Activities")
-print(get_outreach(book,year))
+    par_tex += section_sep("Active Grants")
+    par_tex += get_active_grants(book,year) + "\n"
+    
+    par_tex += section_sep("Consulting")
+    par_tex += get_consulting(book,year) + "\n"
+    
+    par_tex += section_sep("Meetings")
+    par_tex += get_meetings(book,year) + "\n"
+    
+    par_tex += section_sep("Current Grad Students")
+    par_tex += get_current_grad_students(book,year) + "\n"
+    
+    par_tex += section_sep("Graduated Students")
+    par_tex += get_graduated_students(book,year) + "\n"
+    
+    par_tex += section_sep("Staff")
+    par_tex += get_staff_list(book,year) + "\n"
+    
+    par_tex += section_sep("Undergrads")
+    par_tex += get_ug_list(book,year) + "\n"
+    
+    par_tex += section_sep("Personal Research")
+    par_tex += get_narrative(book,year,"PersonalResearch", "Personal Research",
+                             "Brief description of the extent and nature of any personal research " + \
+                             "(defined here as research performed independent of graduate students rather " + \
+                             "than through them) and indicate the project on which this research is done.")+ "\n"
 
-print(section_sep + "Awards/Honors")
-print(get_narrative(book,year,"HonorsAwards", "Honors and Awards received in " + str(year),""))
+    par_tex += section_sep("Publications")
+    par_tex += build_publications() + "\n"
+    
 
-print(section_sep + "Patents")
-print(get_patents(book,year))
+    par_tex += section_sep("Other Activites")
+    par_tex += get_narrative(book,year,"ImportantActivities", "Other Important Activities",
+                             "Comment on any important acitivities not covered above.") + "\n"
 
-print(section_sep + "Submitted Proposals")
-print(get_proposal_submissions(book,year))
-
-print(section_sep + "Active Grants")
-print(get_active_grants(book,year))
-
-print(section_sep + "Consulting")
-print(get_consulting(book,year))
-
-print(section_sep + "Meetings")
-print(get_meetings(book,year))
-
-print(section_sep + "Current Grad Students")
-print(get_current_grad_students(book,year))
-
-print(section_sep + "Graduated Students")
-print(get_graduated_students(book,year))
-
-print(section_sep + "Staff")
-print(get_staff_list(book,year))
-
-print(section_sep + "Undergrads")
-print(get_ug_list(book,year))
-
-print(section_sep + "Personal Research")
-print(get_narrative(book,year,"PersonalResearch", "Personal Research",
-                    "Brief description of the extent and nature of any personal research " + \
-                    "(defined here as research performed independent of graduate students rather " + \
-                    "than through them) and indicate the project on which this research is done."))
-
-print(section_sep + "Publications")
-print(build_publications())
-
-print(section_sep + "Other Activites")
-print(get_narrative(book,year,"ImportantActivities", "Other Important Activities",
-                    "Comment on any important acitivities not covered above."))
-
-print(section_sep + "Significant Accomplishments")
-print(get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
-                    "Your own view of your most significant accomplishments during the past year"))
+    par_tex += section_sep("Significant Accomplishments")
+    par_tex += get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
+                    "Your own view of your most significant accomplishments during the past year") + "\n"
+    
       
-print("\end{document}")
+    par_tex += "\end{document}\n"
+
+    return par_tex
+
+
+year = 2017
+
+# use creds to create a client to interact with the Google Drive API
+scope = ['https://spreadsheets.google.com/feeds']
+creds = ServiceAccountCredentials.from_json_keyfile_name('ep-par-processing.json', scope)
+client = gspread.authorize(creds)
+
+# Find a workbook by name and open the first sheet
+# Make sure you use the right name here.
+book = client.open("PAR Data")
+
+newline = "\\\\ \n"
+
+emph_none = "\emph{none}\n\n"
+
+table_single_rule = " \\\\ \hline"
+table_double_rule = table_single_rule + "\hline"
+table_footer = "\\end{tabular}\n \end{centering}"
+
+if __name__ == __main__:
+
+    
