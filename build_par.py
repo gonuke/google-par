@@ -18,7 +18,7 @@ def section_sep(title):
     section_sep_str : (str) containing the separator comment
     """
     
-    return  "\n\n%%\n%% " + title + "\n%% " + "-"*len(title)
+    return  "\n\n%%\n%% " + title + "\n%% " + "-"*len(title) + "\n"
 
 def heading(section, guidance=""):
     """
@@ -361,7 +361,7 @@ def get_patents(book,year):
 
 def make_grant_list(grants):
 
-    column_info = [("Begin Date",0.1,'BEGINDATE'),
+    column_info = [("Begin Date",0.1,'STARTDATE'),
                    ("End Date",0.1,'ENDDATE'),
                    ("Amount [\$k]",0.1,'AMOUNT'),
                    ("Topic",0.3,'TOPIC'),
@@ -389,7 +389,7 @@ def get_proposal_submissions(book,year):
 
 def active_grant(grant_record,year):
 
-    begin_date_obj = datetime.strptime(grant_record['BEGINDATE'],"%m/%d/%y")
+    begin_date_obj = datetime.strptime(grant_record['STARTDATE'],"%m/%d/%y")
     end_date_obj = datetime.strptime(grant_record['ENDDATE'],"%m/%d/%y")
     return begin_date_obj.year <= year and end_date_obj.year >= year
     
@@ -680,6 +680,5 @@ table_single_rule = " \\\\ \hline"
 table_double_rule = table_single_rule + "\hline"
 table_footer = "\\end{tabular}\n \end{centering}"
 
-if __name__ == __main__:
-
-    
+if __name__ == '__main__':
+    print(build_par(book,year))
