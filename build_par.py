@@ -280,7 +280,7 @@ def get_reviews(book,year):
         if len(reviews) > 0:
             review_strs.append("\subsection{" + r_type_str + "}")
             review_str_list = [(r['NAME'] + " (" + str(r['NUMBER']) + ") ") for r in reviews]
-            review_strs.append(newline.join(review_str_list))
+            review_strs.append(", ".join(review_str_list))
                                
     return "\n\n".join(review_strs)
 
@@ -341,7 +341,7 @@ def get_outreach(book,year):
     for outreach in current_outreach:
         date_obj = datetime.strptime(outreach['DATE'],"%m/%d/%y")
         outreach_strs.append(datetime.strftime(date_obj,"%B") + " " + str(date_obj.day) +
-                             ": " + outreach['AUDIENCE'] + ", \"" + outreach['TITLE'] + "\"")
+                             ": " + outreach['AUDIENCE'] + ", ``" + outreach['TITLE'] + "''")
 
     return heading("Educational Outreach Activities") + newline.join(outreach_strs)
 
@@ -390,8 +390,8 @@ def get_proposal_submissions(book,year):
 def active_grant(grant_record,year):
 
     begin_date_obj = datetime.strptime(grant_record['BEGINDATE'],"%m/%d/%y")
-    end_date_obj = datetime.strptime(grant_record['BEGINDATE'],"%m/%d/%y")
-    return begin_date_obj.year <= year and end_date_obj.year >= 2017
+    end_date_obj = datetime.strptime(grant_record['ENDDATE'],"%m/%d/%y")
+    return begin_date_obj.year <= year and end_date_obj.year >= year
     
 
 def get_active_grants(book,year):
@@ -506,7 +506,7 @@ def get_graduated_students(book,year):
 
 def get_staff_list(book,year):
 
-    staff_positions = {'Scientist','Researcher'}
+    staff_positions = {'Scientist','Researcher','Academic Staff'}
 
     staff_list = [s for s in filter_for_current(book.worksheet("Staff"),year) if s['TITLE'] in staff_positions]
 
@@ -661,7 +661,7 @@ def build_par(book,year):
     return par_tex
 
 
-year = 2017
+year = 2018
 
 # use creds to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds']
