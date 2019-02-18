@@ -1,30 +1,50 @@
 import gspread
+import argparse
 from oauth2client.service_account import ServiceAccountCredentials
 
 from datetime import datetime
 
-year = 2018
-
-# use creds to create a client to interact with the Google Drive API
-scope = ['https://spreadsheets.google.com/feeds']
-creds = ServiceAccountCredentials.from_json_keyfile_name('ep-par-processing.json', scope)
-client = gspread.authorize(creds)
-
-# Find a workbook by name and open the first sheet
-# Make sure you use the right name here.
-book = client.open("PAR Data")
-
+# Some standard formatting to use throughout
 newline = "\\\\ \n"
 
-section_sep = "\n\n%%\n%% "
 emph_none = "\emph{none}\n\n"
 
 table_single_rule = " \\\\ \hline"
 table_double_rule = table_single_rule + "\hline"
 table_footer = "\\end{tabular}\n \end{centering}"
 
-# add a section heading with some optional guidance
+
+def section_sep(title):
+    """
+    Add a comment that serves as a section separator and a title for human
+    readability of the ultimate TeX file.
+    
+    inputs
+    ------
+    title : (str) title for this section
+
+    outputs
+    -------
+    section_sep_str : (str) containing the separator comment
+    """
+    
+    return  "\n\n%%\n%% " + title + "\n%% " + "-"*len(title) + "\n"
+
 def heading(section, guidance=""):
+    """
+    Add a section heading and optionally some additional guidance for 
+    how to interpret the section.
+
+    inputs
+    ------
+    section : (str) the title of the section
+    guidance : (str) guidance to be added in italics after the section heading
+                default : ""
+
+    outputs
+    -------
+    head_str : (str) formatted section heading and guidance
+    """
 
     head_str = "\section{" + section + "}\n\n"
     if len(guidance) > 0:
@@ -32,10 +52,27 @@ def heading(section, guidance=""):
 
     return head_str
 
-# utility function can check whether a record is current, either because
-# YEAR == year, or
-# STARTYEAR <= year <= ENDYEAR
 def is_current(record,year):
+    """
+    Utility function to check whether a record is valid for the current year.
+    Since records contain different information about dates, as appropriate,
+    there are multiple conditions that must be tested.
+
+    a) if a record contains only a YEAR, it's value must match the given `year`
+    b) if a record contains a STARTYEAR (and therefore an ENDYEAR), the given `year`
+       must lie in the interval [STARTYEAR, ENDYEAR]
+    c) if a record contains a STARTDATE (and therefore an ENDDATE), the given `year`
+       must lie in the interval [STARTDATE, ENDDATE]
+    d) if a record contains a DATE, the DATE must be in the given `year`
+
+    inputs
+    ------
+    year : (int) year of interest to be matched
+
+    output
+    ------
+    Boolean per the above conditions
+    """
 
     if 'YEAR' in record.keys():
         return record['YEAR'] == year
@@ -44,21 +81,51 @@ def is_current(record,year):
     elif 'STARTDATE' in record.keys():
         start_date_obj = datetime.strptime(record['STARTDATE'],"%m/%d/%y")
         end_date_obj = datetime.strptime(record['ENDDATE'],"%m/%d/%y")
-        return (start_date_obj.year == year or end_date_obj.year == year)
+        return (start_date_obj.year <= year and end_date_obj.year >= year)
     elif 'DATE' in record.keys():
         date_obj = datetime.strptime(record['DATE'],"%m/%d/%y")
         return date_obj.year == year
     else:
         return False
 
-# utility function to get all current record from worksheetx
 def filter_for_current(worksheet,year):
+    """
+    Utility function to extract all the records from a given worksheet that 
+    are valid for the current year, as defined by the `is_current()` method.
 
+    inputs
+    ------
+    worksheet : a Google sheets worksheet object
+    year      : the year to test for currency
+
+
+    output
+    ------
+    a list of records that are current
+    """
+    
     return [s for s in worksheet.get_all_records() if is_current(s,year)]
 
-# utility function to start a LaTeX table with some set of headings
 def build_table_header(col_info):
+    """
+    Utility function to start a LaTeX table with some set of headings.
 
+    The format information is passed in a list of tuples, with one tuple for
+    each column, in order.  Each tuple contains 
+    * a string for the header, 
+    * a float for the relative width of the column
+    * a key for that column based on the database table being used
+
+    inputs
+    ------
+    col_info : a list of tuples for each 
+
+    output
+    ------
+    a string that creates a correctly formatted LaTeX table
+
+    """
+    
     col_widths = [("p{" + str(frac) + "\\textwidth}|") for (head,frac,key) in col_info]
     col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
@@ -68,8 +135,30 @@ def build_table_header(col_info):
 
     return header
 
-# utility function to add rows to table
 def build_table_rows(record_list,col_info):
+    """
+    Utility function to add rows to a table
+
+    inputs
+    ------
+    record_list : a list of dictionaries.  
+
+                  Each dictionary represents one record.  The keys of the
+                  dictionary match the keys in the col_info to ensure that
+                  each item goes in the correct column
+
+    col_info : a list of tuples.
+
+               Each tuple represents one column.  The last entry in each tuple
+               is a key that matches one of the columns in the original 
+               database table.
+
+    output
+    ------
+    a string that creates multiple correctly formatted LaTeX table rows, 
+    with the data in the correct columns
+
+    """
 
     rows_str = ""
     for r in record_list:
@@ -77,38 +166,77 @@ def build_table_rows(record_list,col_info):
     return rows_str + table_footer
 
 
-# utility function to add columns to one table based on a shared key with another table
-# for every row in `table` add all the columns from `cat_table`
-#   from the row with matching `join_key`
 def expand_table(table,cat_table,join_key):
+    """
+    Utility function to add columns to one table based on the shared `join_key`
+    with another table for every row in `table` add all the columns 
+    from `cat_table` from the row with matching `join_key`
 
+    inputs
+    ------
+
+    table : a list of dictionaries, each with one key equal to `join_key`
+    cat_table : a list of dictionaries, each with one key equal to `join_key`
+    join_key : a key that appears in all dictionaries of each table
+
+    outputs
+    -------
+    a list of dictionaries, each with all the entries of both original dictionaries
+
+    """
+
+    # create a dictionary that maps the value of `join_key` for each record
+    # onto that full record
     catalog = {e[join_key] : e for e in cat_table}
-    
+
+    # update each dictionary in `table` with the data from `cat_table`
+    # with the matching value of `join_key`
     for e in table:
-        for (k,v) in catalog[e[join_key]].items():
-            e[k] = v
+        e.update(catalog[e[join_key]])
 
     return table
 
-# list of courses
 def get_course_list(book,year):
+    """
+    Build a table with the list of courses.
+    
+    inputs
+    ------
+    book : a google sheet workbook object
+    year : the current year
 
+    output
+    ------
+    A correctly formatted LaTeX string with the section header and table
+    listing the courses that have been taught.
+    """
+
+    # the semester list is defined in the order in which they occur in a
+    # calendar year
     semester_list = ['Spring','Summer','Fall']
 
-    part_rule = " \\\\ \cline{2-4}"
+    # a LaTeX table separator within each semester
+    part_rule  = " \\\\ \cline{2-4}"
+    # an entry to use in every semester with no teaching
     empty_semester = "\multicolumn{3}{c|}{" + emph_none + "} " + table_double_rule
 
+    # map the database column names to the LaTeX table headers and widths
     column_info = [("Semester",0.25,''),
                    ("Course",0.25,'COURSEID'),
                    ("\# of Students",0.25,'STUDENTS'),
                    ("Role",0.25,'ROLE')]
-    
+
+    # Start with the heading & table heading
     course_list_str = heading("Courses Taught","") + build_table_header(column_info)
 
+    # get all course history
     full_history = book.worksheet('CourseHistory').get_all_records()
 
     for semester in semester_list:
+        # get this semester's list of courses
         course_list = [e for e in full_history if (e['YEAR'],e['SEMESTER']) == (year,semester)]
+
+        # special formatting for multirow with semester heading
         if (len(course_list) > 0):
             first_col = "\multirow{" + str(len(course_list)) + "}{*}{" + semester + "} & "
             rows = [" & ".join([entry['COURSEID'],str(entry['STUDENTS']),entry['ROLE']]) for entry in course_list]
@@ -120,7 +248,18 @@ def get_course_list(book,year):
 
 # info about future course interests
 def get_future_courses(book):
+    """
+    Provide list of future coures interest in three groupings.
 
+    inputs
+    ------
+    book : a google workbook object
+
+    output
+    ------
+    LaTeX formatted list of courses in three groupings.
+    """
+    
     all_courses = book.worksheet('CourseInfo').get_all_records()
 
     future_course_str = heading("Course Interest for Future","")
@@ -137,10 +276,25 @@ def get_future_courses(book):
     return future_course_str
 
 
-# information about individual advisees
 def get_student_advising_info(book,year):
+    """
+    Read through lists of advisees to determine number of advisees at each stage.
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A string with a count of current year advisees grouped as:
+    * NE undergraduates
+    * NEEP graduates
+    * other graduate students
+    """
 
     adv_str_list = []
+
     # Student advisees
     current_advisees = filter_for_current(book.worksheet('AdviseeList'), year)
     
@@ -164,9 +318,20 @@ def get_student_advising_info(book,year):
     else:
         return emph_none
 
-# information about advising organizations
 def get_org_advising_info(book,year):
+    """
+    Information about advising student organizations
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A string that indicates which student orgs are advised and the time commitment.
+    """
+    
     current_orgs = expand_table(filter_for_current(book.worksheet('StudentOrgAdvising'),year),
                                 book.worksheet('StudentOrgList').get_all_records(),
                                 'ORGCODE')
@@ -178,10 +343,20 @@ def get_org_advising_info(book,year):
         
     return advising_str
 
-# all advising info
 def get_advising_info(book,year):
+    """
+    Create a report section with both individual advisee counts and student org advising.
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
 
+    output
+    ------
+    A string that combines the output of two advising functions
+    """
+    
     advising_str = heading("Advising Responsibilities")
 
     advising_str += get_student_advising_info(book,year) + newline + \
@@ -189,9 +364,20 @@ def get_advising_info(book,year):
     
     return advising_str
 
-# string to expand the list of committees for a professional society
 def committee_list(services):
+    """
+    Create a string by expanding the service obligations and sorting them
+    from shortest frequency unit to longest.
 
+    inputs
+    ------
+    services : a list of record for service obligations
+
+    output
+    ------
+    A LaTeX string with a new line for each service obligation.
+    """
+        
     timeunit = [("WEEK", " hrs/wk"),
                 ("MONTH", " hrs/month"),
                 ("SEMESTER", " hrs/semester"),
@@ -207,8 +393,21 @@ def committee_list(services):
 
     return newline.join(commit_str_list)
 
-# special formatting for service to professional societies
 def soc_svc(services,society):
+    """
+    Create a string by expanding the service obligations to a specific society 
+    and sorting them from shortest frequency unit to longest.
+
+    inputs
+    ------
+    services : a list of record for service obligations
+    society : a string indicating which professional society
+
+    output
+    ------
+    A LaTeX string with a subheading for the society and a list of entries 
+    for each service obligation within that society.
+    """
 
     name = [svc['NAME'] for svc in services if svc['SERVICECODE'] == society]
     
@@ -334,7 +533,7 @@ def get_patents(book,year):
 
 def make_grant_list(grants):
 
-    column_info = [("Begin Date",0.1,'BEGINDATE'),
+    column_info = [("Begin Date",0.1,'STARTDATE'),
                    ("End Date",0.1,'ENDDATE'),
                    ("Amount [\$k]",0.1,'AMOUNT'),
                    ("Topic",0.3,'TOPIC'),
@@ -362,7 +561,7 @@ def get_proposal_submissions(book,year):
 
 def active_grant(grant_record,year):
 
-    begin_date_obj = datetime.strptime(grant_record['BEGINDATE'],"%m/%d/%y")
+    begin_date_obj = datetime.strptime(grant_record['STARTDATE'],"%m/%d/%y")
     end_date_obj = datetime.strptime(grant_record['ENDDATE'],"%m/%d/%y")
     return begin_date_obj.year <= year and end_date_obj.year >= year
     
@@ -546,85 +745,123 @@ def build_publications():
     return pub_str
 
 
+def build_par(book,year):
 
-        
-print("""\
+    par_tex = """\
 \documentclass[12pt]{article}
 
 \usepackage{ep_par}
-
-\\newcommand{\paryear}{
-""" + str(year) + """\
-}
+"""
+    
+    par_tex += "\\newcommand{\paryear}{" +  str(year) + "}\n"
+    par_tex += """\
 \\newcommand{\parperson}{Paul P.\ H.\ Wilson}
 \\begin{document}
 
 \partitle
-""")
+"""
+    
+    par_tex += section_sep("Course List")
+    par_tex += get_course_list(book,year) + "\n"
 
-print(section_sep + "Course List")    
-print(get_course_list(book,year))
+    par_tex += section_sep("Course Prep")
+    par_tex += get_future_courses(book) + "\n"
 
-print(section_sep + "Course Prep")    
-print(get_future_courses(book))
+    par_tex += section_sep("Course Dev")
+    par_tex += get_narrative(book,year,"CourseDevelopment", "Course Development Activities","") + "\n"
 
-print(section_sep + "Course Dev")
-print(get_narrative(book,year,"CourseDevelopment", "Course Development Activities",""))
+    par_tex += section_sep("Student Advising")
+    par_tex += get_advising_info(book,year) + "\n"
+    
+    par_tex += section_sep("Service")
+    par_tex += get_service(book,year) + "\n"
+    
+    par_tex += section_sep("Educational Outreach Activities")
+    par_tex += get_outreach(book,year) + "\n"
+    
+    par_tex += section_sep("Awards/Honors")
+    par_tex += get_narrative(book,year,"HonorsAwards", "Honors and Awards received in " + str(year),"") + "\n"
 
-print(section_sep + "Student Advising")
-print(get_advising_info(book,year))
+    par_tex += section_sep("Patents")
+    par_tex += get_patents(book,year) + "\n"
 
-print(section_sep + "Service")
-print(get_service(book,year))
+    par_tex += section_sep("Submitted Proposals")
+    par_tex += get_proposal_submissions(book,year) + "\n"
 
-print(section_sep + "Educational Outreach Activities")
-print(get_outreach(book,year))
+    par_tex += section_sep("Active Grants")
+    par_tex += get_active_grants(book,year) + "\n"
+    
+    par_tex += section_sep("Consulting")
+    par_tex += get_consulting(book,year) + "\n"
+    
+    par_tex += section_sep("Meetings")
+    par_tex += get_meetings(book,year) + "\n"
+    
+    par_tex += section_sep("Current Grad Students")
+    par_tex += get_current_grad_students(book,year) + "\n"
+    
+    par_tex += section_sep("Graduated Students")
+    par_tex += get_graduated_students(book,year) + "\n"
+    
+    par_tex += section_sep("Staff")
+    par_tex += get_staff_list(book,year) + "\n"
+    
+    par_tex += section_sep("Undergrads")
+    par_tex += get_ug_list(book,year) + "\n"
+    
+    par_tex += section_sep("Personal Research")
+    par_tex += get_narrative(book,year,"PersonalResearch", "Personal Research",
+                             "Brief description of the extent and nature of any personal research " + \
+                             "(defined here as research performed independent of graduate students rather " + \
+                             "than through them) and indicate the project on which this research is done.")+ "\n"
 
-print(section_sep + "Awards/Honors")
-print(get_narrative(book,year,"HonorsAwards", "Honors and Awards received in " + str(year),""))
+    par_tex += section_sep("Publications")
+    par_tex += build_publications() + "\n"
+    
 
-print(section_sep + "Patents")
-print(get_patents(book,year))
+    par_tex += section_sep("Other Activites")
+    par_tex += get_narrative(book,year,"ImportantActivities", "Other Important Activities",
+                             "Comment on any important acitivities not covered above.") + "\n"
 
-print(section_sep + "Submitted Proposals")
-print(get_proposal_submissions(book,year))
-
-print(section_sep + "Active Grants")
-print(get_active_grants(book,year))
-
-print(section_sep + "Consulting")
-print(get_consulting(book,year))
-
-print(section_sep + "Meetings")
-print(get_meetings(book,year))
-
-print(section_sep + "Current Grad Students")
-print(get_current_grad_students(book,year))
-
-print(section_sep + "Graduated Students")
-print(get_graduated_students(book,year))
-
-print(section_sep + "Staff")
-print(get_staff_list(book,year))
-
-print(section_sep + "Undergrads")
-print(get_ug_list(book,year))
-
-print(section_sep + "Personal Research")
-print(get_narrative(book,year,"PersonalResearch", "Personal Research",
-                    "Brief description of the extent and nature of any personal research " + \
-                    "(defined here as research performed independent of graduate students rather " + \
-                    "than through them) and indicate the project on which this research is done."))
-
-print(section_sep + "Publications")
-print(build_publications())
-
-print(section_sep + "Other Activites")
-print(get_narrative(book,year,"ImportantActivities", "Other Important Activities",
-                    "Comment on any important acitivities not covered above."))
-
-print(section_sep + "Significant Accomplishments")
-print(get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
-                    "Your own view of your most significant accomplishments during the past year"))
+    par_tex += section_sep("Significant Accomplishments")
+    par_tex += get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
+                    "Your own view of your most significant accomplishments during the past year") + "\n"
+    
       
-print("\end{document}")
+    par_tex += "\end{document}\n"
+
+    return par_tex
+
+
+def open_book(credentials,filename):
+
+    # use creds to create a client to interact with the Google Drive API
+    scope = ['https://spreadsheets.google.com/feeds']
+    creds = ServiceAccountCredentials.from_json_keyfile_name(credentials, scope)
+    client = gspread.authorize(creds)
+
+    # Find a workbook by name and open the first sheet
+    # Make sure you use the right name here.
+    book = client.open(filename)
+
+    return book
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-y", "--year", type=int, default=datetime.now().year -1 ,
+                        help="Year of report")
+
+    parser.add_argument("-c", "--credentials", type=str, default='ep-par-processing.json',
+                        help="JSON file with secret credentials for accessing a users Google files")
+
+    parser.add_argument("-f", "--filename", type=str, default='PAR Data',
+                        help="Name of Google Sheets file")
+                        
+    args = parser.parse_args()
+
+    book = open_book(args.credentials, args.filename)
+    
+    print(build_par(book,args.year))
