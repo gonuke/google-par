@@ -12,7 +12,8 @@ emph_none = "\emph{none}\n\n"
 table_single_rule = " \\\\ \hline"
 table_double_rule = table_single_rule + "\hline"
 table_footer = "\\end{tabular}\n \end{centering}"
-
+bind_page_start = "\\noindent\\begin{minipage}{\\textwidth}\n"
+bind_page_end = "\n\\end{minipage}\n"
 
 def section_sep(title):
     """
@@ -638,7 +639,8 @@ def get_current_grad_students(book,year):
                    ("Research Topic",0.35,'TOPIC'),
                    ("Source of Support",0.2,'SOURCE')]
 
-    research_student_str = heading("Graduate Students",
+    research_student_str = bind_page_start
+    research_student_str += heading("Graduate Students",
                            "Current grad students doing thesis research, " + \
                            "and non-thesis students who are active in research and " + \
                            "taking as much time as though doing there theses.")
@@ -648,7 +650,9 @@ def get_current_grad_students(book,year):
                                 build_table_rows(research_student_list,column_info)
     else:
         research_student_str += emph_none
-        
+
+    research_student_str += bind_page_end
+    
     return research_student_str
 
 def get_graduated_students(book,year):
@@ -683,7 +687,7 @@ def get_staff_list(book,year):
     staff_list = [s for s in filter_for_current(book.worksheet("Staff"),year) if s['TITLE'] in staff_positions]
 
     
-    staff_str = heading("Research Staff",
+    staff_str = bind_page_start + heading("Research Staff",
                 "Post-PhD and academic staff supervised in " + str(year))
 
     column_info = [("Name", 0.25,'NAME'),
@@ -697,7 +701,7 @@ def get_staff_list(book,year):
     else:
         staff_str += emph_none
 
-    return staff_str
+    return staff_str + bind_page_end
 
 def get_ug_list(book,year):
 
@@ -737,7 +741,7 @@ def build_publications():
 
     pub_str = heading("Publications list","")
 
-    for section in ['books','journalssubmitted','journalsaccepted','journalspublished','conference','reports','invited']:
+    for section in ['journalssubmitted','journalsaccepted','journalspublished','conference','reports','books','invited']:
         pub_str += "\\nocite{0}{{*}}\n".format(section)
         pub_str += "\\bibliographystyle{0}{{ep_par.bst}}\n".format(section)
         pub_str += "\\bibliography{0}{{{0}.bib}}\n\n".format(section)
