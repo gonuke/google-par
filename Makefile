@@ -1,8 +1,8 @@
 
-SOURCES=par.tex
+SOURCES=par.tex professional_summary.tex
 BIB=books.bib journalssubmitted.bib journalsaccepted.bib journalspublished.bib conference.bib  reports.bib invited.bib
 
-TIDY=*.lo[fgt] *.toc *.bbl *.blg *.ist *.glo *.aux *.acn *.out
+TIDY=*.lo[fgt] *.toc *.bbl *.blg *.ist *.glo *.aux *.acn *.out par.pdf
 
 default: par.pdf
 
