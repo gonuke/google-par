@@ -764,7 +764,9 @@ def build_par(book,year):
 
 \partitle
 """
-    
+    par_tex += section_sep("Professional Summary")
+    par_tex += "\include{professional_summary}\n\n"
+
     par_tex += section_sep("Course List")
     par_tex += get_course_list(book,year) + "\n"
 
@@ -840,9 +842,7 @@ def build_par(book,year):
 def open_book(credentials,filename):
 
     # use creds to create a client to interact with the Google Drive API
-    scope = ['https://spreadsheets.google.com/feeds']
-    creds = ServiceAccountCredentials.from_json_keyfile_name(credentials, scope)
-    client = gspread.authorize(creds)
+    client = gspread.service_account(filename=credentials)
 
     # Find a workbook by name and open the first sheet
     # Make sure you use the right name here.
