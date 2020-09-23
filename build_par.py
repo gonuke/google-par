@@ -765,7 +765,7 @@ def build_par(book,year):
 \partitle
 """
     par_tex += section_sep("Professional Summary")
-    par_tex += "\include{professional_summary}\n\n"
+    par_tex += "\input{professional_summary}\n\n"
 
     par_tex += section_sep("Course List")
     par_tex += get_course_list(book,year) + "\n"
@@ -824,10 +824,21 @@ def build_par(book,year):
     par_tex += section_sep("Publications")
     par_tex += build_publications() + "\n"
     
+    par_tex += section_sep("Climate Improvement")
+    par_tex += get_narrative(book,year,"ClimateImprovement", "Climate Improvement Activities",
+                             "Please comment on any ways that you have worked to enhance the climate " + \
+                             "and culture of the department and/or college.  This may include " + \
+                             "strategies to increase inclusivity in your courses, approaches to " + \
+                             "maintain a healthy climate in your research group, activities that " + \
+                             "contribute to a collaborative working environment with other faculty " + \
+                             "and staff, and workshops/trainings on leadership, mentoring, recruiting, " + \
+                             "or diversity.  If you have attended workshops/trainings on leadership, " + \
+                             "mentoring, recruiting, or diversity, please list those and identify actions " +\
+                             "you have taken as a result of what you learned.") + "\n"
 
-    par_tex += section_sep("Other Activites")
+    par_tex += section_sep("Other Activities")
     par_tex += get_narrative(book,year,"ImportantActivities", "Other Important Activities",
-                             "Comment on any important acitivities not covered above.") + "\n"
+                             "Comment on any important activities not covered above.") + "\n"
 
     par_tex += section_sep("Significant Accomplishments")
     par_tex += get_narrative(book,year,"SignificantAccomplishments","Significant Accomplishments",
