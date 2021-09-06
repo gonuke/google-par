@@ -754,7 +754,7 @@ def build_par(book,year):
     par_tex = """\
 \documentclass[12pt]{article}
 
-\usepackage{ep_par}
+\\usepackage{ep_par}
 """
     
     par_tex += "\\newcommand{\paryear}{" +  str(year) + "}\n"
@@ -879,4 +879,4 @@ if __name__ == '__main__':
 
     book = open_book(args.credentials, args.filename)
     
-    print(build_par(book,args.year))
+    print(build_par(book,args.year).encode("utf8"))
