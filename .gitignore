@@ -115,3 +115,6 @@ ep-par-processing.json
 # avoid adding the specific LaTeX file we are creating,
 # but not all LaTeX files
 par.tex
+*.fdb_latexmk
+*.fls
+*.synctex.gz
