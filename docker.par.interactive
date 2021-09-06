@@ -1,2 +1,2 @@
-docker run -v /home/wilsonp/professional/google-par:/par -it gonuke/google-par /bin/bash
+docker run -v /home/wilsonp/professional/google-par:/par -u $UID:$UID -w /par -it gonuke/google-par /bin/bash
 
