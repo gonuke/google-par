@@ -340,7 +340,7 @@ def get_org_advising_info(book,year):
         advising_str = "Faculty advisor for the " + \
                        ", ".join([(o['ORGNAME'] + " (" + str(o['WEEKLYHOURS']) + " hours/wk)") for o in current_orgs])
     else:
-        advising_str = emph_none
+        advising_str = "Student Organizations: " + emph_none
         
     return advising_str
 
