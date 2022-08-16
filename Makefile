@@ -2,7 +2,7 @@
 SOURCES=par.tex professional_summary.tex
 BIB=books.bib journalssubmitted.bib journalsaccepted.bib journalspublished.bib conference.bib  reports.bib invited.bib
 
-TIDY=*.lo[fgt] *.toc *.bbl *.blg *.ist *.glo *.aux *.acn *.out par.pdf
+TIDY=*.lo[fgt] *.toc *.bbl *.blg *.ist *.glo *.aux *.acn *.out *.fls *.fdb_latexmk
 
 default: par.pdf
 
@@ -22,4 +22,4 @@ tidy:
 	rm -f ${TIDY}
 
 clean: tidy
-	rm -f report.pdf
+	rm -f par.pdf
