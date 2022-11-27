@@ -40,7 +40,7 @@ def section_sep(title):
     section_sep_str : (str) containing the separator comment
     """
     
-    return  f"\n\n%%\n%% {title}\n%% {'-' * len(title)}\n"
+    return  doubleblank + "%%\n%% " + title + "\n%% " + '-' * len(title) + doubleblank
 
 def heading(section, guidance=""):
     """
@@ -58,9 +58,9 @@ def heading(section, guidance=""):
     head_str : (str) formatted section heading and guidance
     """
 
-    head_str = f"\section{{{section}}}\n\n"
+    head_str = "\section{" + section "}" + doubleblank
     if len(guidance) > 0:
-        head_str += f"\emph{{({guidance})}}\n\n "
+        head_str += "\emph{(" + guidance + ")}" + doubleblank
 
     return head_str
 
@@ -89,15 +89,16 @@ def is_current(record,year):
     if 'YEAR' in record.keys():
         startyear = int(record['YEAR'])
         endyear = startyear
-    elif 'DATE' in record.keys():
-        startyear = datetime.strptime(record['DATE'],date_fmt).year
-        endyear = startyear
     elif 'STARTYEAR' in record.keys():
         startyear = int(record['STARTYEAR'])
         endyear = int(record['ENDYEAR'])
     elif 'STARTDATE' in record.keys():
         startyear = datetime.strptime(record['STARTDATE'],date_fmt).year
         endyear = datetime.strptime(record['ENDDATE'],date_fmt).year
+    # check for DATE last because some records (e.g. proposals) contain DATE and STARTDATE
+    elif 'DATE' in record.keys():
+        startyear = datetime.strptime(record['DATE'],date_fmt).year
+        endyear = startyear
     else:
         startyear = 9999
         endyear = 0
@@ -161,8 +162,8 @@ def build_table_header(col_info):
 
     """
     
-    col_widths = [(f"p{{{frac}\\textwidth}}|") for (head,frac,key) in col_info]
-    col_heads = [(f"\\textbf{{{head}}}") for (head,frac,key) in col_info]
+    col_widths = [("p{" + frac + "\\textwidth}|") for (head,frac,key) in col_info]
+    col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
               "\\begin{tabular}" + \
               "{|" + "".join(col_widths)  + "}" + \
