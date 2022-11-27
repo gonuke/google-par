@@ -6,15 +6,26 @@ from datetime import datetime
 
 # Some standard formatting to use throughout
 newline = "\\\\ \n"
+doubleblank = "\n\n"
 
-emph_none = "\emph{none}\n\n"
+emph_none = "\emph{none}"
+
+date_fmt = "%m/%d/%y"
 
 table_single_rule = " \\\\ \hline"
 table_double_rule = table_single_rule + "\hline"
-table_footer = "\\end{tabular}\n \end{centering}"
+table_footer = "\\end{tabular}\n\\end{centering}"
 bind_page_start = "\\noindent\\begin{minipage}{\\textwidth}\n"
 bind_page_end = "\n\\end{minipage}\n"
 
+grantlist_column_info = [("Begin Date",0.1,'STARTDATE'),
+                   ("End Date",0.1,'ENDDATE'),
+                   ("Amount [\$k]",0.1,'AMOUNT'),
+                   ("Topic",0.3,'TOPIC'),
+                   ("Agency",0.1,'AGENCY'),
+                   ("Co-Authors",0.1,'CO-AUTHORS'),
+                   ("Role",0.05,'ROLE')]
+ 
 def section_sep(title):
     """
     Add a comment that serves as a section separator and a title for human
@@ -29,7 +40,7 @@ def section_sep(title):
     section_sep_str : (str) containing the separator comment
     """
     
-    return  "\n\n%%\n%% " + title + "\n%% " + "-"*len(title) + "\n"
+    return  f"\n\n%%\n%% {title}\n%% {'-' * len(title)}\n"
 
 def heading(section, guidance=""):
     """
@@ -47,9 +58,9 @@ def heading(section, guidance=""):
     head_str : (str) formatted section heading and guidance
     """
 
-    head_str = "\section{" + section + "}\n\n"
+    head_str = f"\section{{{section}}}\n\n"
     if len(guidance) > 0:
-        head_str += "\emph{(" + guidance + ")}\n\n "
+        head_str += f"\emph{{({guidance})}}\n\n "
 
     return head_str
 
@@ -76,18 +87,41 @@ def is_current(record,year):
     """
 
     if 'YEAR' in record.keys():
-        return record['YEAR'] == year
-    elif 'STARTYEAR' in record.keys():
-        return (record['STARTYEAR'] <= year and record['ENDYEAR'] >= year)
-    elif 'STARTDATE' in record.keys():
-        start_date_obj = datetime.strptime(record['STARTDATE'],"%m/%d/%y")
-        end_date_obj = datetime.strptime(record['ENDDATE'],"%m/%d/%y")
-        return (start_date_obj.year <= year and end_date_obj.year >= year)
+        startyear = int(record['YEAR'])
+        endyear = startyear
     elif 'DATE' in record.keys():
-        date_obj = datetime.strptime(record['DATE'],"%m/%d/%y")
-        return date_obj.year == year
+        startyear = datetime.strptime(record['DATE'],date_fmt).year
+        endyear = startyear
+    elif 'STARTYEAR' in record.keys():
+        startyear = int(record['STARTYEAR'])
+        endyear = int(record['ENDYEAR'])
+    elif 'STARTDATE' in record.keys():
+        startyear = datetime.strptime(record['STARTDATE'],date_fmt).year
+        endyear = datetime.strptime(record['ENDDATE'],date_fmt).year
     else:
-        return False
+        startyear = 9999
+        endyear = 0
+
+    return (startyear <= year and endyear >= year)
+
+def make_date_range(record):
+    """
+    Return a formatted string of the date range indicated in the record
+
+    input:
+    ------
+
+    record : a single record with a STARTDATE and ENDDATE entry
+
+    outputs:
+    ---------
+    A LaTeX formatted string representing the date range of the record
+
+    """
+    start_date_obj = datetime.strptime(record['STARTDATE'],date_fmt)
+    end_date_obj = datetime.strptime(record['ENDDATE'],date_fmt)
+
+    return start_date_obj.strftime("%m/%d") + "-" + end_date_obj.strftime("%m/%d")
 
 def filter_for_current(worksheet,year):
     """
@@ -127,8 +161,8 @@ def build_table_header(col_info):
 
     """
     
-    col_widths = [("p{" + str(frac) + "\\textwidth}|") for (head,frac,key) in col_info]
-    col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
+    col_widths = [(f"p{{{frac}\\textwidth}}|") for (head,frac,key) in col_info]
+    col_heads = [(f"\\textbf{{{head}}}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
               "\\begin{tabular}" + \
               "{|" + "".join(col_widths)  + "}" + \
@@ -165,6 +199,67 @@ def build_table_rows(record_list,col_info):
     for r in record_list:
         rows_str += " & ".join([str(r[key]) for (head,frac,key) in col_info]) + table_single_rule + "\n"
     return rows_str + table_footer
+
+def build_table_or_none(row_data, column_info):
+    """
+    Create a complete table with a header and row data from a list of data.
+    If the list is empty, return the italicized "none" in its place.
+
+
+    inputs
+    ------
+    record_list : a list of dictionaries.  
+
+                  Each dictionary represents one record.  The keys of the
+                  dictionary match the keys in the col_info to ensure that
+                  each item goes in the correct column
+
+    column_info : a list of tuples.
+
+               Each tuple represents one column.  The last entry in each tuple
+               is a key that matches one of the columns in the original 
+               database table.
+
+    output
+    ------
+    A LaTeX formatted string with a complete table, or an entry specifying none.
+
+    """
+
+    row_data_str = ""
+
+    if len(row_data) > 0:
+        row_data_str += build_table_header(column_info) + \
+                        build_table_rows(row_data,column_info)
+    else:
+        row_data_str += emph_none + doubleblank
+
+    return row_data_str
+
+def build_textlist_or_none(list_data):
+    """
+    Create a list of entries if there are any, otherwise none.
+
+
+    inputs
+    ------
+    list_data : a list of text entries
+
+    output
+    ------
+    A LaTeX formatted string with a simple list of one line per entry.
+
+    """
+
+    list_str = ""
+
+    if len(list_data) > 0:
+        list_str += newline.join(list_data)
+    else:
+        list_str += emph_none + doubleblank
+
+    return list_str
+
 
 
 def expand_table(table,cat_table,join_key):
@@ -212,14 +307,8 @@ def get_course_list(book,year):
     listing the courses that have been taught.
     """
 
-    # the semester list is defined in the order in which they occur in a
-    # calendar year
-    semester_list = ['Spring','Summer','Fall']
-
-    # a LaTeX table separator within each semester
-    part_rule  = " \\\\ \cline{2-4}"
-    # an entry to use in every semester with no teaching
-    empty_semester = "\multicolumn{3}{c|}{" + emph_none + "} " + table_double_rule
+    # get all course history
+    full_history = book.worksheet('CourseHistory').get_all_records()
 
     # map the database column names to the LaTeX table headers and widths
     column_info = [("Semester",0.25,''),
@@ -228,29 +317,36 @@ def get_course_list(book,year):
                    ("Role",0.25,'ROLE')]
 
     # Start with the heading & table heading
-    course_list_str = heading("Courses Taught","") + build_table_header(column_info)
+    course_list_header = heading("Courses Taught") + build_table_header(column_info)
 
-    # get all course history
-    full_history = book.worksheet('CourseHistory').get_all_records()
+    # a LaTeX table separator within each semester
+    part_rule  = " \\\\ \cline{2-4}"
 
-    for semester in semester_list:
-        # get this semester's list of courses
-        course_list = [e for e in full_history if (e['YEAR'],e['SEMESTER']) == (year,semester)]
+    # an entry to use in every semester with no teaching
+    empty_semester = "\multicolumn{3}{c|}{" + emph_none + "} " + table_double_rule
+
+    course_list_str = ""
+
+    # loop through semesters in the order in which they occur in a
+    # calendar year    
+    for semester in ['Spring','Summer','Fall']:
+        # extract necessary data from this semester's list of courses
+        course_list = [ (e['COURSEID'],str(e['STUDENTS']),e['ROLE']) for e in full_history if (e['YEAR'],e['SEMESTER']) == (year,semester)]
 
         # special formatting for multirow with semester heading
         if (len(course_list) > 0):
-            first_col = "\multirow{" + str(len(course_list)) + "}{*}{" + semester + "} & "
-            rows = [" & ".join([entry['COURSEID'],str(entry['STUDENTS']),entry['ROLE']]) for entry in course_list]
-            course_list_str += first_col + (part_rule + "\n & ").join(rows) + table_double_rule + "\n"
+            first_col = "\multirow{" + str(len(course_list)) + "}{*}{" + semester + "} \n    & "
+            rows = [" & ".join(entry) for entry in course_list]
+            course_list_str += first_col + (part_rule + "\n    & ").join(rows) + table_double_rule + "\n"
         else:
             course_list_str += semester + " & " + empty_semester + "\n"
 
-    return course_list_str + table_footer
+    return course_list_header + course_list_str + table_footer
 
 # info about future course interests
 def get_future_courses(book):
     """
-    Provide list of future coures interest in three groupings.
+    Provide list of future courses interest in three groupings.
 
     inputs
     ------
@@ -294,11 +390,11 @@ def get_student_advising_info(book,year):
     * other graduate students
     """
 
-    adv_str_list = []
-
     # Student advisees
     current_advisees = filter_for_current(book.worksheet('AdviseeList'), year)
     
+    adv_str_list = []
+
     num_ne_ugrads = len([s for s in current_advisees if (s['TYPE'],s['PROGRAM']) == ("U","NE")])
     if num_ne_ugrads > 0:
         adv_str_list.append(str(num_ne_ugrads) + " NE undergraduates")
@@ -314,10 +410,7 @@ def get_student_advising_info(book,year):
         other_grad_string = " other graduate student(s) (" + ", ".join(other_grad_majors) + ")"
         adv_str_list.append(str(num_other_grads) + other_grad_string)
 
-    if len(adv_str_list) > 0:
-        return newline.join(adv_str_list) + "."
-    else:
-        return emph_none
+    return build_textlist_or_none(adv_str_list)
 
 def get_org_advising_info(book,year):
     """
@@ -340,7 +433,7 @@ def get_org_advising_info(book,year):
         advising_str = "Faculty advisor for the " + \
                        ", ".join([(o['ORGNAME'] + " (" + str(o['WEEKLYHOURS']) + " hours/wk)") for o in current_orgs])
     else:
-        advising_str = "Student Organizations: " + emph_none
+        advising_str = "Student Organizations: " + emph_none + doubleblank
         
     return advising_str
 
@@ -412,7 +505,7 @@ def soc_svc(services,society):
 
     name = [svc['NAME'] for svc in services if svc['SERVICECODE'] == society]
     
-    cat_svc_str = "\subsubsection{" + name[0] + "}\n\n"
+    cat_svc_str = "\subsubsection{" + name[0] + "}" + doubleblank
 
     cat_svc_str += committee_list([s for s in services if s['SOCIETY'] == society])
 
@@ -420,7 +513,22 @@ def soc_svc(services,society):
 
 # get the formatted version of each different category of service
 def get_service_cat(services,cat,cat_str):
+    """
+    Create a summary of the service obligations for a single category of service.
 
+    inputs
+    ------
+
+    services : a list of records for service obligations
+    cat      : the category key to extract for this block
+    cat_str  : the long text description of this category
+
+    output
+    ------
+    A LaTeX string with a subheading for the category and a list of entries 
+    for each service obligation within that category.
+
+    """
     cat_svc = [s for s in services if s['CATEGORY'] == cat]
     
     cat_svc_str = "\subsection{To " + cat_str + "}\n\n"
@@ -432,12 +540,25 @@ def get_service_cat(services,cat,cat_str):
             for soc in {s['SOCIETY'] for s in cat_svc if s['SOCIETY'] != ""}:
                 cat_svc_str += soc_svc(cat_svc,soc)
     else:
-        cat_svc_str += emph_none
+        cat_svc_str += emph_none + doubleblank
 
-    return cat_svc_str + "\n\n"
+    return cat_svc_str + doubleblank
 
 # get formatted list of reviews
 def get_reviews(book,year):
+    """
+    Create a string to summarize proposal and paper reviews
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX string with a subheading for each of paper reviews and proposals and an inline list
+    of the number of proposals for each source.
+    """
 
     current_reviews = filter_for_current(book.worksheet('Reviews'),year)
     review_catalog = book.worksheet('ReviewSource').get_all_records()
@@ -455,12 +576,30 @@ def get_reviews(book,year):
             review_str_list = [(r['NAME'] + " (" + str(r['NUMBER']) + ") ") for r in reviews]
             review_strs.append(", ".join(review_str_list))
                                
-    return "\n\n".join(review_strs)
+    return doubleblank.join(review_strs)
 
 def other_student_committees(book,year):
+    """
+    Create table entries that contain correct information for a service commitment
+    based on the participation in student BS/MS/PhD committees
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    comm_summary_list : a dictionary with the same records as the entries in the list of committees,
+                        with one entry for each type of committee (BS, MS, PhD) 
+                        and each organization (EP, UW, NATIONAL)
+
+    """
+
+    # get list of other student committees for this year
     other_comms = filter_for_current(book.worksheet('OtherStudentCommittees'),year)
 
+    # set of possible committees
     comm_type_list = ["BS Defense", "MS Oral", "MS Defense", "PhD Prelim", "PhD Defense"]
 
     comm_summary_list = []
@@ -468,7 +607,7 @@ def other_student_committees(book,year):
         for cat in ["EP","UW","NATIONAL"]:
             name_list = [s['NAME'] for s in other_comms if (s['TYPE'],s['DEPT']) == (comm_type,cat)]
             if len(name_list) > 0:
-                comm_summary_list.append({'CATEGORY':cat,
+                comm_summary_list.append({'CATEGORY': cat,
                                           'NAME': comm_type + " committees (" + ", ".join(name_list) + ")",
                                           'COMMITMENTUNIT': 'COUNT',
                                           'COMMITMENTQUANTITY': len(name_list)})
@@ -478,6 +617,20 @@ def other_student_committees(book,year):
 
 # get all service obligations
 def get_service(book,year):
+    """
+    Create a section with all service obligations
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string describing the service obligations in various categories
+    and subcategories.
+
+    """
 
     current_services = filter_for_current(book.worksheet('Service'),year)
     service_catalog = book.worksheet('ServiceList').get_all_records()
@@ -488,6 +641,7 @@ def get_service(book,year):
     parent_societies = {s['SOCIETY'] for s in current_services if (s['SOCIETY'] != "")}
     current_services.extend([s for s in service_catalog if (s['SERVICECODE'] in parent_societies)])
 
+    # append service list with summaries of student committees
     current_services.extend(other_student_committees(book,year))
     
     service_str = heading("Service")
@@ -507,12 +661,25 @@ def get_service(book,year):
 
 # get outreach
 def get_outreach(book,year):
+    """
+    Create a section with outreach experiences
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string describing the outreach activities
+
+    """
 
     current_outreach = filter_for_current(book.worksheet('Outreach'),year)
 
     outreach_strs = []
     for outreach in current_outreach:
-        date_obj = datetime.strptime(outreach['DATE'],"%m/%d/%y")
+        date_obj = datetime.strptime(outreach['DATE'],date_fmt)
         outreach_strs.append(datetime.strftime(date_obj,"%B") + " " + str(date_obj.day) +
                              ": " + outreach['AUDIENCE'] + ", ``" + outreach['TITLE'] + "''")
 
@@ -520,92 +687,145 @@ def get_outreach(book,year):
 
 
 def get_patents(book,year):
+    """
+    Create a section with all patents
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string describing the patents
+
+    """
 
     patent_list = filter_for_current(book.worksheet("Patents"),year)
 
     patent_str = heading("Patents applied for or granted in " + str(year))
 
-    if len(patent_list) > 0:
-        patent_str += newline.join([("Patent No. " + p['PATENTNUMBER'] + ": " + p['TITLE'] + "(" + p['STATUS'] + ")") for p in patent_list]) + newline
-    else:
-        patent_str += emph_none
+    patent_str_list = ["Patent No. %(PATENTNUMBER) : %(TITLE) (%(STATUS))" % p for p in patent_list]
+
+    patent_str += build_textlist_or_none(patent_str_list)
 
     return patent_str
 
 def make_grant_list(grants):
+    """
+    Create a table out of a list of grants with information about dates, amount, topic, agency, etc
 
-    column_info = [("Begin Date",0.1,'STARTDATE'),
-                   ("End Date",0.1,'ENDDATE'),
-                   ("Amount [\$k]",0.1,'AMOUNT'),
-                   ("Topic",0.3,'TOPIC'),
-                   ("Agency",0.1,'AGENCY'),
-                   ("Co-Authors",0.1,'CO-AUTHORS'),
-                   ("Role",0.05,'ROLE')]
-    
-    grants_str = build_table_header(column_info) + \
-                 build_table_rows(grants,column_info)
+    inputs
+    ------
+    grants : a list of records that each has the appropriate information for describing either an
+             active grant or a proposal
+
+    output
+    ------
+    A LaTeX formatted string with a table containing all the grant info
+
+    """
+
+    # layout the columns
+   
+    grants_str = build_table_or_none(grants,column_info)
 
     return grants_str
 
 def get_proposal_submissions(book,year):
+    """
+    Create a table for grant submissions during the year of interest
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string with a table of grant proposal information.
+    """
 
     submission_list = filter_for_current(book.worksheet('ProposalsAndGrants'), year)
 
     submission_list_str = heading("Research proposals submitted during " + str(year))
 
-    if len(submission_list) > 0:
-        submission_list_str +=  make_grant_list(submission_list)
-    else:
-        submission_list_str += emph_none
+    submission_list_str += build_table_or_none(submission_list, grantlist_column_info)
 
     return submission_list_str
 
 def active_grant(grant_record,year):
 
-    begin_date_obj = datetime.strptime(grant_record['STARTDATE'],"%m/%d/%y")
-    end_date_obj = datetime.strptime(grant_record['ENDDATE'],"%m/%d/%y")
+    begin_date_obj = datetime.strptime(grant_record['STARTDATE'],date_fmt)
+    end_date_obj = datetime.strptime(grant_record['ENDDATE'],date_fmt)
     return begin_date_obj.year <= year and end_date_obj.year >= year
     
 
 def get_active_grants(book,year):
+    """
+    Create a table for grant submissions during the year of interest
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string with a table of active grant information.
+    """
 
     grant_list = book.worksheet('ProposalsAndGrants').get_all_records()
+
     active_grant_list = [g for g in grant_list if g['STATUS'] == 'FUNDED' and active_grant(g,year)]
 
     active_grant_list_str = heading("Research grants and contracts active during " + str(year))
     
-    if len(active_grant_list) > 0:
-        active_grant_list_str += make_grant_list(active_grant_list)
-    else:
-        active_grant_list_str += emph_none
+    active_grant_list_str += build_table_or_none(active_grant_list, grantlist_column_info)
 
     return active_grant_list_str
     
 def get_consulting(book,year):
+    """
+    Create a list of consulting engagements
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted string with one line for each consulting arrangement.
+    """
 
     consult_list = filter_for_current(book.worksheet("Consulting"),year)
 
     consulting_str = heading("Consulting agreements held in " + str(year))
 
-    if len(consult_list) > 0:
-        consulting_str += newline.join([("\\textbf{" + c['ORGANIZATION'] + ":}" + c['TOPIC']) for c in consult_list]) + newline
-    else:
-        consulting_str += emph_none
+    consulting_str_list = [("\\textbf{" + c['ORGANIZATION'] + ":}" + c['TOPIC']) for c in consult_list]
+
+    consulting_str += build_textlist_or_none(consulting_str_list)
 
     return consulting_str
 
-def make_date_range(record):
-
-    start_date_obj = datetime.strptime(record['STARTDATE'],"%m/%d/%y")
-    end_date_obj = datetime.strptime(record['ENDDATE'],"%m/%d/%y")
-
-    return start_date_obj.strftime("%m/%d") + "-" + end_date_obj.strftime("%m/%d")
-    
-    
 def get_meetings(book,year):
+    """
+    Create a list of meetings that were attended
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted table with one row per meeting
+    """
+ 
     meeting_list = filter_for_current(book.worksheet("Meetings"),year)
 
+    # extend the data with a formatted date range
     for meeting in meeting_list:
         meeting['DATERANGE'] = make_date_range(meeting)
     
@@ -615,22 +835,33 @@ def get_meetings(book,year):
 
     meeting_list_str = heading("Professional Meetings and Conferences Attended in " + str(year),"")
 
-    if len(meeting_list) > 0:
-        meeting_list_str += build_table_header(column_info) + \
-                            build_table_rows(meeting_list,column_info)
-    else:
-        meeting_list_str += emph_none
+    meeting_list_str += build_table_or_none(meeting_list,column_info)
 
     return meeting_list_str
 
 def get_current_grad_students(book,year):
+    """
+    Create a table with current grad students, their topic and funding
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted table with one row per student
+    """
+ 
+    all_current_students = filter_for_current(book.worksheet("ActiveResearchStudents"),year)
+    all_current_advisees = filter_for_current(book.worksheet("AdviseeList"),year)
 
     grad_types = {"G", "V"}
-    
-    research_student_list = expand_table(filter_for_current(book.worksheet("ActiveResearchStudents"),year),
-                                         [s for s in filter_for_current(book.worksheet("AdviseeList"),year) if s['TYPE'] in grad_types],
+    research_student_list = expand_table( all_current_students,
+                                         [s for s in all_current_advisees if s['TYPE'] in grad_types],
                                          'LASTNAME')
 
+    # extend record with full name to use standard table building capability
     for student in research_student_list:
         student['FULLNAME'] = student['FIRSTNAME'] + " " + student['LASTNAME']
 
@@ -639,24 +870,33 @@ def get_current_grad_students(book,year):
                    ("Research Topic",0.35,'TOPIC'),
                    ("Source of Support",0.2,'SOURCE')]
 
+    # force this to start on a new page
     research_student_str = bind_page_start
     research_student_str += heading("Graduate Students",
                            "Current grad students doing thesis research, " + \
                            "and non-thesis students who are active in research and " + \
                            "taking as much time as though doing there theses.")
 
-    if len(research_student_list) > 0:
-        research_student_str += build_table_header(column_info) + \
-                                build_table_rows(research_student_list,column_info)
-    else:
-        research_student_str += emph_none
+    research_student_str += build_table_or_none(research_student_list,column_info)
 
     research_student_str += bind_page_end
     
     return research_student_str
 
 def get_graduated_students(book,year):
+    """
+    Create a table with students who graduated in this time period.
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted table with one row per student who graduated
+    """
+ 
     research_student_list = expand_table(filter_for_current(book.worksheet("ActiveResearchStudents"),year),
                                          filter_for_current(book.worksheet("AdviseeList"),year),
                                          'LASTNAME')
@@ -672,72 +912,112 @@ def get_graduated_students(book,year):
 
     graduated_student_str = heading("Graduate students who graduated in " + str(year),"")
     
-    if len(graduated_student_list) > 0:
-        graduated_student_str += build_table_header(column_info) + \
-                                 build_table_rows(graduated_student_list, column_info)
-    else:
-        graduated_student_str += emph_none
-
+    graduated_student_str += build_table_or_none(graduated_student_list, column_info)
+    
     return graduated_student_str
 
-def get_staff_list(book,year):
 
-    staff_positions = {'Scientist','Researcher','Academic Staff'}
+def get_staff_list(book,year, staff_positions):
+    """
+    Create a table with staff with a given set of titles
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+    staff_positions : a set of strings with valid titles to include in this table
+
+    output
+    ------
+    A LaTeX formatted table with one row per staff member
+    """
+ 
     staff_list = [s for s in filter_for_current(book.worksheet("Staff"),year) if s['TITLE'] in staff_positions]
 
-    
-    staff_str = bind_page_start + heading("Research Staff",
-                "Post-PhD and academic staff supervised in " + str(year))
+    for staff in staff_list:
+        staff['FULLNAME'] = staff['FIRSTNAME'] + " " + staff['LASTNAME']
 
-    column_info = [("Name", 0.25,'NAME'),
+    column_info = [("Name", 0.25,'FULLNAME'),
                    ("Title",0.11,'TITLE'),
                    ("Research Topic",0.35,'TOPIC'),
                    ("Source of Support",0.2,'SUPPORT')]
     
-    if len(staff_list) > 0:
-        staff_str += build_table_header(column_info) + \
-                     build_table_rows(staff_list, column_info)
-    else:
-        staff_str += emph_none
+    return build_table_or_none(staff_list, column_info)
 
-    return staff_str + bind_page_end
+def get_prof_list(book, year):
+    """
+    Create a table of professional staff: Scientists, Researches, Academic Staff
+
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted table with one row per staff member
+    """
+ 
+    staff_positions = {'Scientist','Researcher','Academic Staff'}
+
+    prof_list_str = bind_page_start + heading("Research Staff",
+                    "Post-PhD and academic staff supervised in " + str(year))
+    
+    prof_list_str += get_staff_list(book, year, staff_positions)
+    
+    return prof_list_str + bind_page_end
 
 def get_ug_list(book,year):
+    """
+    Create a table of undergraduate students
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted table with one row per staff member
+    """
+ 
     ug_positions = {'U/G Hourly'}
+  
+    ug_list_str = heading("Undergraduate researchers")
 
-    ug_list = [s for s in filter_for_current(book.worksheet("Staff"),year) if s['TITLE'] in ug_positions]
-    
-    ug_str = heading("Undergraduate researchers")
+    ug_list_str += get_staff_list(book, year, ug_positions)
 
-    column_info = [("Name", 0.25,'NAME'),
-                   ("Position",0.11,'TITLE'),
-                   ("Research Topic",0.35,'TOPIC'),
-                   ("Source of Support",0.2,'SUPPORT')]
-    
-    if len(ug_list) > 0:
-        ug_str += build_table_header(column_info) + \
-                  build_table_rows(ug_list, column_info)
-    else:
-        ug_str += emph_none
-
-    return ug_str
+    return ug_list_str
 
 def get_narrative(book, year, tab, title, desc):
+    """
+    Create a text list from a given spreadsheet tab composed of titles and descriptions
 
+    inputs
+    ------
+    book : a google workbook object
+    year : the current year to extract
+
+    output
+    ------
+    A LaTeX formatted list wth one item per list
+    """
+ 
     item_list = filter_for_current(book.worksheet(tab),year)
 
     item_str = heading(title, desc)
 
-    if len(item_list) > 0:
-        item_str += " \n\n".join([item['DESCRIPTION'] for item in item_list])
-    else:
-        item_str += emph_none
+    item_str_list = [item['DESCRIPTION'] for item in item_list]
+
+    item_str += build_textlist_or_none(item_str_list)
 
     return item_str
 
 def build_publications():
+    """
+    Create a bibliography entry for each of the separate bibtex files.
+    """
+
 
     pub_str = heading("Publications list","")
 
@@ -810,7 +1090,7 @@ def build_par(book,year):
     par_tex += get_graduated_students(book,year) + "\n"
     
     par_tex += section_sep("Staff")
-    par_tex += get_staff_list(book,year) + "\n"
+    par_tex += get_prof_list(book,year) + "\n"
     
     par_tex += section_sep("Undergrads")
     par_tex += get_ug_list(book,year) + "\n"
@@ -879,4 +1159,4 @@ if __name__ == '__main__':
 
     book = open_book(args.credentials, args.filename)
     
-    print(build_par(book,args.year).encode("utf8"))
+    print(build_par(book,args.year))
