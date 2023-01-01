@@ -112,7 +112,7 @@ def is_current(record,years):
         startyear = 9999
         endyear = 0
 
-    return (startyear <= years[-1] and endyear >= year[0])
+    return (startyear <= years[-1] and endyear >= years[0])
 
 def make_date_range(record):
     """
@@ -171,7 +171,7 @@ def build_table_header(col_info):
 
     """
     
-    col_widths = [("p{" + frac + "\\textwidth}|") for (head,frac,key) in col_info]
+    col_widths = [("p{" + str(frac) + "\\textwidth}|") for (head,frac,key) in col_info]
     col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
               "\\begin{tabular}" + \
