@@ -162,7 +162,7 @@ def build_table_header(col_info):
 
     """
     
-    col_widths = [("p{" + frac + "\\textwidth}|") for (head,frac,key) in col_info]
+    col_widths = [("p{" + str(frac) + "\\textwidth}|") for (head,frac,key) in col_info]
     col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
               "\\begin{tabular}" + \
