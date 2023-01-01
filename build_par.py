@@ -58,7 +58,7 @@ def heading(section, guidance=""):
     head_str : (str) formatted section heading and guidance
     """
 
-    head_str = "\section{" + section "}" + doubleblank
+    head_str = "\section{" + section + "}" + doubleblank
     if len(guidance) > 0:
         head_str += "\emph{(" + guidance + ")}" + doubleblank
 
