@@ -1,5 +1,7 @@
 import gspread
 import argparse
+import sys
+
 from oauth2client.service_account import ServiceAccountCredentials
 
 from datetime import datetime
@@ -133,6 +135,25 @@ def make_date_range(record):
 
     return start_date_obj.strftime("%m/%d") + "-" + end_date_obj.strftime("%m/%d")
 
+def filter_data_for_current(worksheet_data,years):
+    """
+    Utility function to extract all the records from a given worksheet that 
+    are valid for the current year, as defined by the `is_current()` method.
+
+    inputs
+    ------
+    worksheet_data : data from a Google sheets worksheet object
+    year      : the year to test for currency
+
+
+    output
+    ------
+    a list of records that are current
+    """
+    
+    return [s for s in worksheet_data if is_current(s,years)]
+
+
 def filter_for_current(worksheet,years):
     """
     Utility function to extract all the records from a given worksheet that 
@@ -149,7 +170,7 @@ def filter_for_current(worksheet,years):
     a list of records that are current
     """
     
-    return [s for s in worksheet.get_all_records() if is_current(s,years)]
+    return filter_data_for_current(worksheet.get_all_records(), years)
 
 def build_table_header(col_info):
     """
@@ -264,7 +285,9 @@ def build_textlist_or_none(list_data):
     list_str = ""
 
     if len(list_data) > 0:
-        list_str += newline.join(list_data)
+        list_str += "\\begin{itemize}\n"
+        list_str += "\item " + ("\n\item ").join(list_data)
+        list_str += "\n\end{itemize}"
     else:
         list_str += emph_none + doubleblank
 
@@ -346,11 +369,11 @@ def get_course_list(book,years):
 
             # special formatting for multirow with semester heading
             if (len(course_list) > 0):
-                first_col = "\multirow{" + str(len(course_list)) + "}{*}{" + semester + "} \n    & "
+                first_col = "\multirow{" + str(len(course_list)) + "}{*}{" + semester + " " + str(year) + "} \n    & "
                 rows = [" & ".join(entry) for entry in course_list]
                 course_list_str += first_col + (part_rule + "\n    & ").join(rows) + table_double_rule + "\n"
             else:
-                course_list_str += semester + " & " + empty_semester + "\n"
+                course_list_str += semester + " " + str(year) + " & " + empty_semester + "\n"
 
     return course_list_header + course_list_str + table_footer
 
@@ -464,7 +487,7 @@ def get_advising_info(book,years):
     
     advising_str = heading("Advising Responsibilities")
 
-    advising_str += get_student_advising_info(book,years) + newline + \
+    advising_str += get_student_advising_info(book,years) + doubleblank + \
                     get_org_advising_info(book,years)
     
     return advising_str
@@ -1016,13 +1039,19 @@ def get_narrative(book, years, tab, title, desc):
     A LaTeX formatted list wth one item per list
     """
  
-    item_list = filter_for_current(book.worksheet(tab),years)
+    narrative_data = book.worksheet(tab).get_all_records()
 
     item_str = heading(title, desc)
 
-    item_str_list = [item['DESCRIPTION'] for item in item_list]
+    for year in years:
+        if len(years) > 1:
+            item_str += "\n\n\\noindent\\textbf{" + str(year) + "}\n\n"
 
-    item_str += build_textlist_or_none(item_str_list)
+        item_list = filter_data_for_current(narrative_data,[year])
+
+        item_str_list = [item['DESCRIPTION'] for item in item_list]
+
+        item_str += build_textlist_or_none(item_str_list)
 
     return item_str
 
@@ -1175,6 +1204,8 @@ if __name__ == '__main__':
 
     years = [y for y in range(args.start_year, args.end_year + 1)]
 
+    print("Building PAR for years: " + str(years), file=sys.stderr)
+    
     book = open_book(args.credentials, args.filename)
     
     print(build_par(book,years))
