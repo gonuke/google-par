@@ -237,7 +237,7 @@ def build_table_or_none(row_data, column_info):
 
     return row_data_str
 
-def build_textlist_or_none(list_data):
+def build_itemlist_or_none(list_data):
     """
     Create a list of entries if there are any, otherwise none.
 
@@ -255,7 +255,8 @@ def build_textlist_or_none(list_data):
     list_str = ""
 
     if len(list_data) > 0:
-        list_str += newline.join(list_data)
+        item = "\n\item "
+        list_str += "\\begin{itemize}\n\item " + item.join(list_data) + "\n\end{itemize}\n"
     else:
         list_str += emph_none + doubleblank
 
@@ -411,7 +412,7 @@ def get_student_advising_info(book,year):
         other_grad_string = " other graduate student(s) (" + ", ".join(other_grad_majors) + ")"
         adv_str_list.append(str(num_other_grads) + other_grad_string)
 
-    return build_textlist_or_none(adv_str_list)
+    return build_itemlist_or_none(adv_str_list)
 
 def get_org_advising_info(book,year):
     """
@@ -454,7 +455,7 @@ def get_advising_info(book,year):
     
     advising_str = heading("Advising Responsibilities")
 
-    advising_str += get_student_advising_info(book,year) + newline + \
+    advising_str += get_student_advising_info(book,year) + "\n" + \
                     get_org_advising_info(book,year)
     
     return advising_str
@@ -486,7 +487,7 @@ def committee_list(services):
             commit_str_list.append(svc['NAME'] + " (" + str(svc['COMMITMENTQUANTITY']) + \
                                    time_str + ")")
 
-    return newline.join(commit_str_list)
+    return build_itemlist_or_none(commit_str_list)
 
 def soc_svc(services,society):
     """
@@ -681,10 +682,10 @@ def get_outreach(book,year):
     outreach_strs = []
     for outreach in current_outreach:
         date_obj = datetime.strptime(outreach['DATE'],date_fmt)
-        outreach_strs.append(datetime.strftime(date_obj,"%B") + " " + str(date_obj.day) +
-                             ": " + outreach['AUDIENCE'] + ", ``" + outreach['TITLE'] + "''")
+        outreach_strs.append("\\textbf{"  + datetime.strftime(date_obj,"%B") + " " + str(date_obj.day) +
+                             "}: " + outreach['AUDIENCE'] + ", ``" + outreach['TITLE'] + "''")
 
-    return heading("Educational Outreach Activities") + newline.join(outreach_strs)
+    return heading("Educational Outreach Activities") + build_itemlist_or_none(outreach_strs)
 
 
 def get_patents(book,year):
@@ -708,7 +709,7 @@ def get_patents(book,year):
 
     patent_str_list = ["Patent No. %(PATENTNUMBER) : %(TITLE) (%(STATUS))" % p for p in patent_list]
 
-    patent_str += build_textlist_or_none(patent_str_list)
+    patent_str += build_itemlist_or_none(patent_str_list)
 
     return patent_str
 
@@ -806,7 +807,7 @@ def get_consulting(book,year):
 
     consulting_str_list = [("\\textbf{" + c['ORGANIZATION'] + ":}" + c['TOPIC']) for c in consult_list]
 
-    consulting_str += build_textlist_or_none(consulting_str_list)
+    consulting_str += build_itemlist_or_none(consulting_str_list)
 
     return consulting_str
 
@@ -1010,7 +1011,7 @@ def get_narrative(book, year, tab, title, desc):
 
     item_str_list = [item['DESCRIPTION'] for item in item_list]
 
-    item_str += build_textlist_or_none(item_str_list)
+    item_str += build_itemlist_or_none(item_str_list)
 
     return item_str
 
