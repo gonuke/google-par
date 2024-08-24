@@ -1,2 +1,2 @@
 cd par
-python build_par.py
+python3 build_par.py
