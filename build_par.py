@@ -16,17 +16,17 @@ date_fmt = "%m/%d/%y"
 
 table_single_rule = " \\\\ \hline"
 table_double_rule = table_single_rule + "\hline"
-table_footer = "\\end{tabular}\n\\end{centering}"
+table_footer = "\\end{longtable}\n\\end{centering}"
 bind_page_start = "\\noindent\\begin{minipage}{\\textwidth}\n"
 bind_page_end = "\n\\end{minipage}\n"
 
 grantlist_column_info = [("Begin Date",0.1,'STARTDATE'),
                    ("End Date",0.1,'ENDDATE'),
                    ("Amount [\$k]",0.1,'AMOUNT'),
-                   ("Topic",0.3,'TOPIC'),
+                   ("Topic",0.25,'TOPIC'),
                    ("Agency",0.1,'AGENCY'),
                    ("Co-Authors",0.1,'CO-AUTHORS'),
-                   ("Role",0.05,'ROLE')]
+                   ("Role",0.1,'ROLE')]
  
 def section_sep(title):
     """
@@ -167,7 +167,7 @@ def build_table_header(col_info):
     col_widths = [("p{" + str(frac) + "\\textwidth}|") for (head,frac,key) in col_info]
     col_heads = [("\\textbf{" + head + "}") for (head,frac,key) in col_info]
     header =  "\\begin{centering}\n" + \
-              "\\begin{tabular}" + \
+              "\\begin{longtable}" + \
               "{|" + "".join(col_widths)  + "}" + \
               "\\hline\n" +  " & ".join(col_heads) + table_double_rule + " \n"
 
