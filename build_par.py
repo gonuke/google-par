@@ -651,6 +651,7 @@ def get_service(book,year):
     service_str = heading("Service")
 
     service_cat_list = [("EP", "the Engineering Physics Department"),
+                        ("NEEP", "the Nuclear Engineering \& Engineering Physics Department"),
                         ("COE", "the College of Engineering"),
                         ("UW", "the UW Campus and State of Wisconsin"),
                         ("NATIONAL", "National Groups and Other Universities/Institutions"),
